@@ -1,13 +1,15 @@
-{ pkgs, ... }: {
+{
   roles = {
     foo =
       { pkgs, ... }:
       {
-        environment.systemPackages = with pkgs; [ socat ];
+        environment.systemPackages = with pkgs; [
+          raftly
+        ];
       };
   };
   testScript = ''
-    foo.succeed("true")
+    foo.succeed("server -h")
     foo.fail("false")
   '';
 }

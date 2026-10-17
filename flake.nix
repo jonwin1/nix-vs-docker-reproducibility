@@ -17,11 +17,15 @@
       pkgs = import nixpkgs { inherit system; };
 
       raftly = pkgs.callPackage ./raftly.nix { };
+      raftlyOverlay = final: prev: {
+        raftly = final.callPackage ./raftly.nix { };
+      };
     in
     {
       packages.${system} =
         nxc.lib.compose {
           inherit nixpkgs system;
+          overlays = [ raftlyOverlay ];
           composition = ./composition.nix;
         }
         // {
