@@ -1,12 +1,13 @@
 { pkgs, ... }: {
   roles = {
-    foo = { pkgs, ... }:
+    foo =
+      { pkgs, ... }:
       {
-        # add needed package
-        # environment.systemPackages = with pkgs; [ socat ];
+        environment.systemPackages = with pkgs; [ socat ];
       };
   };
   testScript = ''
     foo.succeed("true")
+    foo.fail("false")
   '';
 }
