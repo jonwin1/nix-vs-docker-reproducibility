@@ -1,0 +1,18 @@
+FROM golang:1.26-alpine
+
+RUN apk add --no-cache bash
+
+WORKDIR /src
+
+# Download Go dependencies first.
+# COPY go.mod go.sum ./
+# RUN go mod download
+
+# Copy the source code and scenario scripts.
+COPY . .
+
+RUN chmod +x /src/test.sh
+
+ENV RESULTS_DIR=/results
+
+ENTRYPOINT ["/src/test.sh"]
