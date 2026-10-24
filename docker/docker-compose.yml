@@ -5,6 +5,18 @@ x-raftly-build: &raftly-build
   dockerfile: docker/Dockerfile
 
 services:
+    scenario-runner:
+        profiles: ["scenarios"]
+        build:
+            context: .
+            dockerfile: Dockerfile.scenarios
+        working_dir: /src
+        environment:
+            RESULTS_DIR: /results
+        volumes:
+            - ../logs/scenarios:/results
+        init: true
+
     test-runner:
         build:
             context: .
