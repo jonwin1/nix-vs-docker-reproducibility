@@ -1,33 +1,11 @@
 {
-  description = "nixos-compose - basic setup";
-
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/26.05";
-    nxc.url = "git+https://gitlab.inria.fr/nixos-compose/nixos-compose.git?ref=25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
   };
-
-  outputs =
-    {
-      self,
-      nixpkgs,
-      nxc,
-    }:
-    let
-      system = "x86_64-linux";
-      pkgs = import nixpkgs { inherit system; };
-    in
-    {
-      packages.${system} =
-        nxc.lib.compose {
-          inherit nixpkgs system;
-          composition = ./composition.nix;
-        }
-        // {
-          raftly = pkgs.callPackage ./raftly.nix { };
-        };
-
-      defaultPackage.${system} = self.packages.${system}."composition::docker";
-
-      devShell.${system} = nxc.devShells.${system}.nxcShell;
+  outputs = inputs@{ self, nixpkgs, ... }: {
+    nixosConfigurations.sc-experiment = nixpkgs.lib.nixosSystem {
+      modules = [ ./configuration.nix ];
     };
+  };
 }
+
