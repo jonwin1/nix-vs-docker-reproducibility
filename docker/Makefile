@@ -1,4 +1,21 @@
-.PHONY: test-docker test-docker-down
+.PHONY: docker-build docker-up docker-down docker-logs test-docker test-docker-down
+
+## Build the Docker image
+docker-build:
+	docker compose build
+
+## Start the 3-node cluster + Prometheus + Grafana
+docker-up:
+	docker compose up -d
+	@echo "Cluster up — HTTP: :8001/:8002/:8003  Metrics: :9090  Grafana: :3000"
+
+## Stop and remove containers (data volumes are kept)
+docker-down:
+	docker compose down
+
+## Tail logs from all containers
+docker-logs:
+	docker compose logs -f
 
 ## Run tests in Docker
 test-docker:
@@ -11,9 +28,9 @@ test-docker-down:
 
 # scenario-docker:
 # 	@mkdir -p logs/scenarios
-# 	docker compose -f docker/docker-compose.yml run --build --rm scenario-runner "$(NAME)"
+# 	docker compose run --build --rm scenario-runner "$(NAME)"
 #
 # scenarios-docker:
 # 	@mkdir -p logs/scenarios
-# 	docker compose -f docker/docker-compose.yml run --build --rm scenario-runner all
+# 	docker compose run --build --rm scenario-runner all
 #
