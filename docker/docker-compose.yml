@@ -1,7 +1,7 @@
 name: "Raftly"
 
 x-raftly-build: &raftly-build
-  context: https://github.com/ani03sha/raftly.git#${RAFTLY_REF:-main}
+  context: https://github.com/ani03sha/raftly.git#$RAFTLY_REF
   dockerfile: docker/Dockerfile
 
 services:
@@ -10,9 +10,10 @@ services:
         build:
             context: .
             dockerfile: docker/Dockerfile.scenarios
+            args:
+                RAFTLY_REF: $RAFTLY_REF
         environment:
             RESULTS_DIR: /results
-            RAFTLY_REF: ${RAFTLY_REF:-main}
         volumes:
             - ./logs/scenarios:/results
         init: true
@@ -24,7 +25,6 @@ services:
             dockerfile: docker/Dockerfile.tests
         environment:
             RESULTS_DIR: /results
-            RAFTLY_REF: ${RAFTLY_REF:-main}
         volumes:
             - ./logs/tests:/results
         networks:

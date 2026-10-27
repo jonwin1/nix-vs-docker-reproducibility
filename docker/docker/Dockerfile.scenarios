@@ -3,7 +3,7 @@ FROM golang:1.26-alpine
 RUN apk add --no-cache bash git ca-certificates
 
 ARG RAFTLY_REPO=https://github.com/ani03sha/raftly.git
-ARG RAFTLY_REF=${RAFTLY_REF:-main}
+ARG RAFTLY_REF
 
 WORKDIR /src
 
@@ -17,11 +17,10 @@ WORKDIR /src/raftly
 RUN go mod download
 
 # Add the runner script from this test repository.
-COPY scripts/scenario-docker-entrypoint.sh \
-    src/scripts/scenario-docker-entrypoint.sh
+COPY scripts/scenarios.sh /src/scripts/scenarios.sh
 
-RUN chmod +x src/scripts/scenario-docker-entrypoint.sh
+RUN chmod +x /src/scripts/scenarios.sh
 
 ENV RESULTS_DIR=/results
 
-ENTRYPOINT ["src/scripts/scenario-docker-entrypoint.sh"]
+ENTRYPOINT ["/src/scripts/scenarios.sh"]
