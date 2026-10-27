@@ -3,7 +3,7 @@ FROM golang:1.26-alpine
 RUN apk add --no-cache bash git ca-certificates
 
 ARG RAFTLY_REPO=https://github.com/ani03sha/raftly.git
-ARG RAFTLY_REF=235a033c44c88a3de0ddd290ab0c522b9770ed41
+ARG RAFTLY_REF=${RAFTLY_REF:-main}
 
 WORKDIR /src
 
