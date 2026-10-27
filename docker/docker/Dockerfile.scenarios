@@ -1,0 +1,27 @@
+FROM golang:1.26-alpine
+
+RUN apk add --no-cache bash git ca-certificates
+
+ARG RAFTLY_REPO=https://github.com/ani03sha/raftly.git
+ARG RAFTLY_REF=235a033c44c88a3de0ddd290ab0c522b9770ed41
+
+WORKDIR /src
+
+# Fetch the original Raftly repository.
+RUN git clone "${RAFTLY_REPO}" /src/raftly \
+    && git -C /src/raftly checkout --detach "${RAFTLY_REF}"
+
+WORKDIR /src/raftly
+
+# Download the Go dependencies.
+RUN go mod download
+
+# Add the runner script from this test repository.
+COPY scripts/scenario-docker-entrypoint.sh \
+    src/scripts/scenario-docker-entrypoint.sh
+
+RUN chmod +x src/scripts/scenario-docker-entrypoint.sh
+
+ENV RESULTS_DIR=/results
+
+ENTRYPOINT ["src/scripts/scenario-docker-entrypoint.sh"]

@@ -1,4 +1,4 @@
-.PHONY: docker-build docker-up docker-down docker-logs test-docker test-docker-down
+.PHONY: docker-build docker-up docker-down docker-logs scenarios-docker
 
 ## Build the Docker image
 docker-build:
@@ -26,11 +26,6 @@ test-docker:
 test-docker-down:
 	docker compose down
 
-# scenario-docker:
-# 	@mkdir -p logs/scenarios
-# 	docker compose run --build --rm scenario-runner "$(NAME)"
-#
-# scenarios-docker:
-# 	@mkdir -p logs/scenarios
-# 	docker compose run --build --rm scenario-runner all
-#
+scenarios-docker:
+	@mkdir -p logs/scenarios
+	docker compose --profile scenarios run --build --rm scenario-runner

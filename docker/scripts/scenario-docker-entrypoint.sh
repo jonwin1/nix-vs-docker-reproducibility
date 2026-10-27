@@ -2,42 +2,22 @@
 
 set -euo pipefail
 
-RESULTS_DIR="${RESULTS_DIR:-/results}"
-MODE="${1:-all}"
-
-# Create a unique name for this run.
-RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
-
+RESULTS_DIR="${RESULTS_DIR:-./results}"
 mkdir -p "$RESULTS_DIR"
 
+RUN_ID="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 LOG_FILE="${RESULTS_DIR}/scenarios-${RUN_ID}.log"
 
-# Keep the list in sync with scripts/scenario.sh.
-case "$MODE" in
-    all)
-        SCENARIOS=(
-            split-brain-2011
-            leader-isolation-write-loss
-            wal-torn-write
-            stale-log-elected-leader
-        )
-        ;;
-    split-brain-2011 | \
-    leader-isolation-write-loss | \
-    wal-torn-write | \
-    stale-log-elected-leader)
-        SCENARIOS=("$MODE")
-        ;;
-    *)
-        echo "Usage: $0 {all|scenario-name}" >&2
-        exit 2
-        ;;
-esac
+SCENARIOS=(
+    split-brain-2011
+    leader-isolation-write-loss
+    wal-torn-write
+    stale-log-elected-leader
+)
 
 {
-    echo "Raftly failure scenario run"
-    echo "Started at: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-    echo "Selection: $MODE"
+    echo "Raftly failure scenarios"
+    echo "Started at: $RUN_ID"
     echo
 
     FAILED=0
@@ -47,7 +27,7 @@ esac
         echo "Scenario: $SCENARIO"
         echo "========================================"
 
-        if bash /src/scripts/scenario.sh "$SCENARIO"; then
+        if bash /src/raftly/scripts/scenario.sh "$SCENARIO"; then
             echo "RESULT: PASS ($SCENARIO)"
         else
             EXIT_CODE=$?

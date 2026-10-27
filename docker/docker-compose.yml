@@ -9,27 +9,25 @@ services:
         profiles: ["scenarios"]
         build:
             context: .
-            dockerfile: Dockerfile.scenarios
-        working_dir: /src
+            dockerfile: docker/Dockerfile.scenarios
         environment:
             RESULTS_DIR: /results
         volumes:
-            - ../logs/scenarios:/results
+            - ./logs/scenarios:/results
         init: true
 
     test-runner:
         build:
             context: .
-            dockerfile: Dockerfile.tests
-        profiles:
-            - test
+            dockerfile: docker/Dockerfile.tests
+        profiles: ["test"]
         environment:
             RAFTLY_NODE1_URL: http://node1:8001
             RAFTLY_NODE2_URL: http://node2:8002
             RAFTLY_NODE3_URL: http://node3:8003
             RESULTS_DIR: /results
         volumes:
-            - ./logs/scenarios:/results
+            - ./logs/tests:/results
         networks:
             - raftly
         depends_on:
