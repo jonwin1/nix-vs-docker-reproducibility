@@ -1,0 +1,3 @@
+[submodule "raftly"]
+	path = raftly
+	url = https://github.com/ani03sha/raftly.git
