@@ -2,14 +2,12 @@ FROM golang:1.26-alpine
 
 RUN apk add --no-cache bash git ca-certificates
 
-ARG RAFTLY_REPO=https://github.com/ani03sha/raftly.git
-ARG RAFTLY_REF
-
 WORKDIR /src
 
 # Fetch the original Raftly repository.
 RUN git clone "${RAFTLY_REPO}" /src/raftly \
     && git -C /src/raftly checkout --detach "${RAFTLY_REF}"
+# TODO: COPY?
 
 WORKDIR /src/raftly
 
