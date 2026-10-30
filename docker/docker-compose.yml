@@ -4,9 +4,8 @@ services:
     scenario-runner:
         profiles: ["scenarios"]
         build:
-            context: .
+            context: ..
             dockerfile: docker/Dockerfile.scenarios
-            args:
         environment:
             RESULTS_DIR: /results
         volumes:

@@ -1,20 +1,11 @@
-.PHONY: docker-build docker-up docker-down docker-logs \
-		scenarios cluster-test cluster-test-all
-
-SCENARIO ?= baseline
+.PHONY: scenarios cluster-tests
 
 scenarios:
 	@mkdir -p logs/scenarios
 	docker compose --profile scenarios build scenario-runner
 	docker compose --profile scenarios run --rm scenario-runner
 
-cluster-test:
-	@mkdir -p logs/cluster-tests
-	docker compose --profile cluster-tests build node1 node2 node3 test-runner
-	docker compose --profile cluster-tests run --rm test-runner "$(SCENARIO)"
-
-# Runs every scenario. Each scenario writes its own log file.
-cluster-test-all:
+cluster-tests:
 	@mkdir -p logs/cluster-tests
 	docker compose --profile cluster-tests build node1 node2 node3 test-runner
 	@failed=0; \

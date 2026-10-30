@@ -4,10 +4,7 @@ RUN apk add --no-cache bash git ca-certificates
 
 WORKDIR /src
 
-# Fetch the original Raftly repository.
-RUN git clone "${RAFTLY_REPO}" /src/raftly \
-    && git -C /src/raftly checkout --detach "${RAFTLY_REF}"
-# TODO: COPY?
+COPY raftly/ /src/raftly
 
 WORKDIR /src/raftly
 
@@ -15,7 +12,7 @@ WORKDIR /src/raftly
 RUN go mod download
 
 # Add the runner script from this test repository.
-COPY scripts/scenarios.sh /src/scripts/scenarios.sh
+COPY docker/scripts/scenarios.sh /src/scripts/scenarios.sh
 
 RUN chmod +x /src/scripts/scenarios.sh
 
