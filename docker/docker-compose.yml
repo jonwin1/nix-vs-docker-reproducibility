@@ -1,5 +1,6 @@
-name: "Raftly"
-
+name: "sc-experiment-setup"
+include:
+    - ../raftly/docker/docker-compose.yml
 services:
     scenario-runner:
         profiles: ["scenarios"]
@@ -15,7 +16,7 @@ services:
     test-runner:
         profiles: ["cluster-tests"]
         build:
-            context: .
+            context: ..
             dockerfile: docker/Dockerfile.tests
         environment:
             RESULTS_DIR: /results
