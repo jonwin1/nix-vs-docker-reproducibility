@@ -22,6 +22,7 @@
   environment.systemPackages = with pkgs; [
     git
     gnumake
+    trivy
     vim
   ];
 
