@@ -1,13 +1,17 @@
-{ config, lib, pkgs, ... }:
+{ pkgs, ... }:
 {
   imports = [ ./hardware-configuration.nix ];
 
-  boot.loader.grub.enable = true;
-  boot.loader.grub.device = "/dev/vda";
+  boot.loader.grub = {
+    enable = true;
+    device = "/dev/vda";
+  };
 
-  networking.hostName = "sc-experiment";
-  networking.networkmanager.enable = true;
-  networking.firewall.enable = false;
+  networking = {
+    hostName = "sc-experiment";
+    networkmanager.enable = true;
+    firewall.enable = false;
+  };
 
   time.timeZone = "Europe/Stockholm";
   i18n.defaultLocale = "en_US.UTF-8";
@@ -15,7 +19,10 @@
 
   users.users.sc = {
     isNormalUser = true;
-    extraGroups = [ "wheel" "networkmanager" ];
+    extraGroups = [
+      "wheel"
+      "networkmanager"
+    ];
     initialPassword = "sc";
   };
 
@@ -42,9 +49,6 @@
     "nix-command"
     "flakes"
   ];
- 
-  programs.direnv.enable = true;
 
   system.stateVersion = "25.05";
 }
-

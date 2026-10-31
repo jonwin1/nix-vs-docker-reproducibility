@@ -1,5 +1,5 @@
 {
-  description = "nixos-compose - basic setup"; # TODO:
+  description = "nixos-compose - raftly";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/26.05";
