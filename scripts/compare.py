@@ -19,7 +19,8 @@ def load_json(path: Path) -> Any:
 def read_hash(path: Path) -> str | None:
     if not path.is_file():
         return None
-    return path.read_text(encoding="utf-8").split()[0]
+    fields = path.read_text(encoding="utf-8").split()
+    return fields[0] if fields else None
 
 
 def image_details(run: Path, node: str) -> dict[str, Any] | None:
@@ -30,28 +31,13 @@ def image_details(run: Path, node: str) -> dict[str, Any] | None:
     return value[0] if isinstance(value, list) else value
 
 
-def sbom_packages(path: Path) -> set[tuple[str, str, str]] | None:
-    if not path.is_file():
-        return None
-    data = load_json(path)
-    return {
-        (item.get("name", ""), item.get("version", ""), item.get("purl", ""))
-        for item in data.get("components", [])
-    }
-
-
-def apk_packages(path: Path) -> set[str] | None:
-    if not path.is_file():
-        return None
-    return {line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()}
-
-
-def nix_inventory(path: Path) -> dict[str, str | None] | None:
+def package_list(path: Path) -> set[str] | None:
     if not path.is_file():
         return None
     return {
-        item.get("store_path", ""): item.get("nar_hash")
-        for item in load_json(path)
+        line.strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
     }
 
 
@@ -64,107 +50,142 @@ def metadata(run: Path) -> dict[str, Any]:
 
 def result_status(run: Path) -> str:
     path = run / "result.json"
-    if not path.is_file():
-        return "unknown"
-    return load_json(path).get("status", "unknown")
+    return load_json(path).get("status", "unknown") if path.is_file() else "unknown"
+
+
+def build_duration(run: Path) -> int | None:
+    path = run / "build-duration-seconds.txt"
+    return int(path.read_text().strip()) if path.is_file() else None
+
+
+def input_hashes(run: Path) -> str | None:
+    path = run / "input-hashes.txt"
+    return path.read_text(encoding="utf-8") if path.is_file() else None
+
+
+def node_summary(run: Path) -> dict[str, Any]:
+    images = [image_details(run, node) for node in NODES]
+    images = [image for image in images if image is not None]
+    image_ids = [image.get("Id") for image in images]
+    layer_lists = [image.get("RootFS", {}).get("Layers", []) for image in images]
+    binaries = [read_hash(run / "nodes" / node / "raftly-server.sha256") for node in NODES]
+    binaries = [value for value in binaries if value is not None]
+
+    return {
+        "nodes_with_image_data": len(images),
+        "same_image_id_on_all_nodes": len(image_ids) == len(NODES) and len(set(image_ids)) == 1,
+        "same_layers_on_all_nodes": len(layer_lists) == len(NODES) and all(layers == layer_lists[0] for layers in layer_lists),
+        "same_raftly_binary_on_all_nodes": len(binaries) == len(NODES) and len(set(binaries)) == 1,
+    }
+
+
+def nix_closure_comparison(run_a: Path, run_b: Path) -> dict[str, Any] | None:
+    path_a = run_a / "nix-store-inventory.json"
+    path_b = run_b / "nix-store-inventory.json"
+    if not path_a.is_file() or not path_b.is_file():
+        return None
+
+    rows_a = load_json(path_a)
+    rows_b = load_json(path_b)
+    store_paths_a = {row.get("store_path", ""): row.get("nar_hash") for row in rows_a}
+    store_paths_b = {row.get("store_path", ""): row.get("nar_hash") for row in rows_b}
+    objects_a = Counter((row.get("store_name", ""), row.get("nar_hash")) for row in rows_a)
+    objects_b = Counter((row.get("store_name", ""), row.get("nar_hash")) for row in rows_b)
+    common_paths = set(store_paths_a) & set(store_paths_b)
+
+    return {
+        "store_path_count_a": len(store_paths_a),
+        "store_path_count_b": len(store_paths_b),
+        "same_store_paths": set(store_paths_a) == set(store_paths_b),
+        "changed_nar_hash_count": sum(
+            store_paths_a[path] != store_paths_b[path] for path in common_paths
+        ),
+        "added_store_path_count": len(set(store_paths_b) - set(store_paths_a)),
+        "removed_store_path_count": len(set(store_paths_a) - set(store_paths_b)),
+        "same_store_objects_and_nar_hashes": objects_a == objects_b,
+    }
 
 
 def compare(run_a: Path, run_b: Path) -> dict[str, Any]:
-    ma, mb = metadata(run_a), metadata(run_b)
-    same_method = ma.get("method") == mb.get("method")
-    input_hashes_a = (run_a / "inputs" / "files.sha256").read_text(encoding="utf-8") if (run_a / "inputs" / "files.sha256").is_file() else None
-    input_hashes_b = (run_b / "inputs" / "files.sha256").read_text(encoding="utf-8") if (run_b / "inputs" / "files.sha256").is_file() else None
-    base_ids_a = (run_a / "inputs" / "docker-base-image-identities.txt").read_text(encoding="utf-8") if (run_a / "inputs" / "docker-base-image-identities.txt").is_file() else None
-    base_ids_b = (run_b / "inputs" / "docker-base-image-identities.txt").read_text(encoding="utf-8") if (run_b / "inputs" / "docker-base-image-identities.txt").is_file() else None
+    meta_a, meta_b = metadata(run_a), metadata(run_b)
+    same_method = meta_a.get("method") == meta_b.get("method")
+    hashes_a, hashes_b = input_hashes(run_a), input_hashes(run_b)
+
     report: dict[str, Any] = {
         "run_a": str(run_a),
         "run_b": str(run_b),
-        "method_a": ma.get("method"),
-        "method_b": mb.get("method"),
+        "method_a": meta_a.get("method"),
+        "method_b": meta_b.get("method"),
+        "same_method": same_method,
         "result_a": result_status(run_a),
         "result_b": result_status(run_b),
-        "build_duration_seconds_a": int((run_a / "build-duration-seconds.txt").read_text().strip()) if (run_a / "build-duration-seconds.txt").is_file() else None,
-        "build_duration_seconds_b": int((run_b / "build-duration-seconds.txt").read_text().strip()) if (run_b / "build-duration-seconds.txt").is_file() else None,
-        "same_method": same_method,
+        "build_duration_seconds_a": build_duration(run_a),
+        "build_duration_seconds_b": build_duration(run_b),
         "inputs": {
-            "build_definition_hashes_equal": input_hashes_a == input_hashes_b if input_hashes_a is not None and input_hashes_b is not None else None,
-            "docker_base_image_identities_equal": base_ids_a == base_ids_b if base_ids_a is not None and base_ids_b is not None else None,
-            "tool_versions_a": ma.get("tools", {}),
-            "tool_versions_b": mb.get("tools", {}),
+            "input_hashes_equal": hashes_a == hashes_b if hashes_a is not None and hashes_b is not None else None,
+            "docker_base_image_identities_equal": None,
+            "tool_versions_equal": meta_a.get("tools") == meta_b.get("tools"),
         },
         "source": {
-            "raftly_commit_a": ma.get("raftly_submodule_commit"),
-            "raftly_commit_b": mb.get("raftly_submodule_commit"),
-            "same_raftly_submodule_commit": ma.get("raftly_submodule_commit") == mb.get("raftly_submodule_commit"),
-            "nix_source_matches_submodule_a": ma.get("raftly_source_revision_matches"),
-            "nix_source_matches_submodule_b": mb.get("raftly_source_revision_matches"),
+            "same_experiment_commit": meta_a.get("experiment_repository_commit") == meta_b.get("experiment_repository_commit"),
+            "experiment_repo_dirty_a": meta_a.get("experiment_repository_dirty"),
+            "experiment_repo_dirty_b": meta_b.get("experiment_repository_dirty"),
+            "same_raftly_commit": meta_a.get("raftly_submodule_commit") == meta_b.get("raftly_submodule_commit"),
+            "raftly_commit_a": meta_a.get("raftly_submodule_commit"),
+            "raftly_commit_b": meta_b.get("raftly_submodule_commit"),
+            "nix_source_matches_submodule_a": meta_a.get("nix_source_matches_submodule"),
+            "nix_source_matches_submodule_b": meta_b.get("nix_source_matches_submodule"),
         },
+        "nodes_within_run_a": node_summary(run_a),
+        "nodes_within_run_b": node_summary(run_b),
         "nodes": {},
     }
 
+    base_a = run_a / "docker-base-image-identities.txt"
+    base_b = run_b / "docker-base-image-identities.txt"
+    if base_a.is_file() and base_b.is_file():
+        report["inputs"]["docker_base_image_identities_equal"] = (
+            base_a.read_text(encoding="utf-8") == base_b.read_text(encoding="utf-8")
+        )
+
     for node in NODES:
-        a, b = image_details(run_a, node), image_details(run_b, node)
-        node_result: dict[str, Any] = {}
-        if a is not None and b is not None:
-            node_result["architecture_a"] = a.get("Architecture")
-            node_result["architecture_b"] = b.get("Architecture")
+        image_a = image_details(run_a, node)
+        image_b = image_details(run_b, node)
+        node_data: dict[str, Any] = {}
+
+        if image_a is not None and image_b is not None:
+            node_data["architecture_a"] = image_a.get("Architecture")
+            node_data["architecture_b"] = image_b.get("Architecture")
             if same_method:
-                node_result["image_id_a"] = a.get("Id")
-                node_result["image_id_b"] = b.get("Id")
-                node_result["image_id_equal"] = a.get("Id") == b.get("Id")
-                layers_a = a.get("RootFS", {}).get("Layers", [])
-                layers_b = b.get("RootFS", {}).get("Layers", [])
-                node_result["layer_diffids_equal"] = layers_a == layers_b
-                node_result["layer_count_a"] = len(layers_a)
-                node_result["layer_count_b"] = len(layers_b)
+                node_data["image_id_equal"] = image_a.get("Id") == image_b.get("Id")
+                layers_a = image_a.get("RootFS", {}).get("Layers", [])
+                layers_b = image_b.get("RootFS", {}).get("Layers", [])
+                node_data["layer_diffids_equal"] = layers_a == layers_b
+                node_data["layer_count_a"] = len(layers_a)
+                node_data["layer_count_b"] = len(layers_b)
 
-        bin_a = read_hash(run_a / "nodes" / node / "raftly-server.sha256")
-        bin_b = read_hash(run_b / "nodes" / node / "raftly-server.sha256")
-        node_result["raftly_binary_sha256_a"] = bin_a
-        node_result["raftly_binary_sha256_b"] = bin_b
-        node_result["raftly_binary_equal"] = bin_a == bin_b if bin_a and bin_b else None
+        binary_a = read_hash(run_a / "nodes" / node / "raftly-server.sha256")
+        binary_b = read_hash(run_b / "nodes" / node / "raftly-server.sha256")
+        node_data["raftly_binary_equal"] = (
+            binary_a == binary_b if binary_a is not None and binary_b is not None else None
+        )
 
-        apk_a = apk_packages(run_a / "nodes" / node / "apk-packages.txt")
-        apk_b = apk_packages(run_b / "nodes" / node / "apk-packages.txt")
-        if same_method and apk_a is not None and apk_b is not None:
-            node_result["apk_packages"] = {
-                "count_a": len(apk_a),
-                "count_b": len(apk_b),
-                "added_in_b": sorted(apk_b - apk_a),
-                "removed_in_b": sorted(apk_a - apk_b),
-                "equal": apk_a == apk_b,
+        packages_a = package_list(run_a / "nodes" / node / "apk-packages.txt")
+        packages_b = package_list(run_b / "nodes" / node / "apk-packages.txt")
+        if same_method and packages_a is not None and packages_b is not None:
+            node_data["apk_packages"] = {
+                "count_a": len(packages_a),
+                "count_b": len(packages_b),
+                "added_in_b": sorted(packages_b - packages_a),
+                "removed_in_b": sorted(packages_a - packages_b),
+                "equal": packages_a == packages_b,
             }
+        report["nodes"][node] = node_data
 
-        sbom_a = sbom_packages(run_a / "nodes" / node / "sbom.cdx.json")
-        sbom_b = sbom_packages(run_b / "nodes" / node / "sbom.cdx.json")
-        if same_method and sbom_a is not None and sbom_b is not None:
-            node_result["sbom"] = {
-                "count_a": len(sbom_a),
-                "count_b": len(sbom_b),
-                "added_in_b": sorted(sbom_b - sbom_a),
-                "removed_in_b": sorted(sbom_a - sbom_b),
-                "equal": sbom_a == sbom_b,
-            }
-        report["nodes"][node] = node_result
-
-    nix_a = nix_inventory(run_a / "nix-store-inventory.json")
-    nix_b = nix_inventory(run_b / "nix-store-inventory.json")
-    if same_method and nix_a is not None and nix_b is not None:
-        common = set(nix_a) & set(nix_b)
-        def object_inventory(run: Path) -> Counter[tuple[str, str | None]]:
-            rows = load_json(run / "nix-store-inventory.json")
-            return Counter((item.get("store_name", ""), item.get("nar_hash")) for item in rows)
-        objects_a, objects_b = object_inventory(run_a), object_inventory(run_b)
-        report["nix_closure"] = {
-            "path_count_a": len(nix_a),
-            "path_count_b": len(nix_b),
-            "same_store_paths": set(nix_a) == set(nix_b),
-            "changed_nar_hashes": sorted(path for path in common if nix_a[path] != nix_b[path]),
-            "added_in_b": sorted(set(nix_b) - set(nix_a)),
-            "removed_in_b": sorted(set(nix_a) - set(nix_b)),
-            "same_store_objects_and_nar_hashes": objects_a == objects_b,
-            "all_paths_and_hashes_equal": nix_a == nix_b,
-        }
+    if same_method:
+        closure = nix_closure_comparison(run_a, run_b)
+        if closure is not None:
+            report["nix_closure"] = closure
 
     return report
 
@@ -174,50 +195,53 @@ def print_report(report: dict[str, Any]) -> None:
     print(f"A: {report['run_a']} ({report['method_a']}, {report['result_a']})")
     print(f"B: {report['run_b']} ({report['method_b']}, {report['result_b']})")
     print(f"Build duration: A={report['build_duration_seconds_a']}s B={report['build_duration_seconds_b']}s")
-    print()
 
-    source = report["source"]
     inputs = report["inputs"]
-    print("Build inputs")
-    print(f"  Build definition hashes equal: {inputs['build_definition_hashes_equal']}")
-    if inputs["docker_base_image_identities_equal"] is not None:
-        print(f"  Docker base image identities equal: {inputs['docker_base_image_identities_equal']}")
-    print(f"  Tool versions equal: {inputs['tool_versions_a'] == inputs['tool_versions_b']}")
-
-    print("\nArtifact source")
-    print(f"  Same Raftly submodule commit: {source['same_raftly_submodule_commit']}")
-    print(f"  Nix source matches submodule:  A={source['nix_source_matches_submodule_a']} B={source['nix_source_matches_submodule_b']}")
+    source = report["source"]
+    print("\nInputs and source")
+    print(f"  Input file hashes equal:     {inputs['input_hashes_equal']}")
+    print(f"  Base image identities equal: {inputs['docker_base_image_identities_equal']}")
+    print(f"  Tool versions equal:          {inputs['tool_versions_equal']}")
+    print(f"  Same experiment commit:       {source['same_experiment_commit']}")
+    print(f"  Experiment tree dirty:        A={source['experiment_repo_dirty_a']} B={source['experiment_repo_dirty_b']}")
+    print(f"  Same Raftly source commit:    {source['same_raftly_commit']}")
+    print(f"  Nix source matches submodule: A={source['nix_source_matches_submodule_a']} B={source['nix_source_matches_submodule_b']}")
 
     if not report["same_method"]:
-        print("\nDifferent build methods: image IDs and Nix NAR hashes identify different objects.")
-        print("Use the application binary hash as the direct cross-method byte comparison.")
+        print("\nDifferent build methods: image IDs and Nix NAR hashes are not directly comparable.")
+        print("The Raftly executable SHA-256 is the direct byte-level comparison.")
 
-    print("\nNode images and application binaries")
+    print("\nNode consistency within each run")
+    for label in ("a", "b"):
+        summary = report[f"nodes_within_run_{label}"]
+        print(f"  Run {label.upper()}: all nodes collected={summary['nodes_with_image_data'] == 3}")
+        print(f"    Same image ID:      {summary['same_image_id_on_all_nodes']}")
+        print(f"    Same image layers:  {summary['same_layers_on_all_nodes']}")
+        print(f"    Same Raftly binary: {summary['same_raftly_binary_on_all_nodes']}")
+
+    print("\nPer-node comparison")
     for node, data in report["nodes"].items():
         print(f"  {node}:")
         if "image_id_equal" in data:
-            print(f"    image ID equal:       {data['image_id_equal']}")
-            print(f"    layer DiffIDs equal:  {data['layer_diffids_equal']}")
+            print(f"    Image ID equal:      {data['image_id_equal']}")
+            print(f"    Layer DiffIDs equal: {data['layer_diffids_equal']}")
         value = data.get("raftly_binary_equal")
-        print(f"    Raftly binary equal:  {value if value is not None else 'not collected'}")
+        print(f"    Raftly binary equal: {value if value is not None else 'not collected'}")
         if "apk_packages" in data:
-            package = data["apk_packages"]
-            print(f"    Alpine packages:      {package['count_a']} / {package['count_b']}; equal={package['equal']}")
-            print(f"      added: {len(package['added_in_b'])}; removed: {len(package['removed_in_b'])}")
-        if "sbom" in data:
-            sbom = data["sbom"]
-            print(f"    SBOM components:      {sbom['count_a']} / {sbom['count_b']}; equal={sbom['equal']}")
+            packages = data["apk_packages"]
+            print(f"    Alpine packages:     {packages['count_a']} / {packages['count_b']}; equal={packages['equal']}")
+            print(f"      Added: {len(packages['added_in_b'])}; removed: {len(packages['removed_in_b'])}")
 
     if "nix_closure" in report:
         closure = report["nix_closure"]
         print("\nNix closure")
-        print(f"  Store paths:            {closure['path_count_a']} / {closure['path_count_b']}")
-        print(f"  Paths and NAR hashes equal: {closure['all_paths_and_hashes_equal']}")
-        print(f"  Store objects and NAR hashes equal: {closure['same_store_objects_and_nar_hashes']}")
-        print(f"  Added/removed paths:    {len(closure['added_in_b'])} / {len(closure['removed_in_b'])}")
-        print(f"  Changed NAR hashes:     {len(closure['changed_nar_hashes'])}")
+        print(f"  Store paths:           {closure['store_path_count_a']} / {closure['store_path_count_b']}")
+        print(f"  Same store paths:      {closure['same_store_paths']}")
+        print(f"  Same names and hashes: {closure['same_store_objects_and_nar_hashes']}")
+        print(f"  Added / removed:       {closure['added_store_path_count']} / {closure['removed_store_path_count']}")
+        print(f"  Changed NAR hashes:    {closure['changed_nar_hash_count']}")
 
-    print("\nNo single reproducibility score is calculated.")
+    print("\nNo overall reproducibility score is calculated.")
 
 
 def main() -> None:
