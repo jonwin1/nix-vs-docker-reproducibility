@@ -94,16 +94,6 @@ ROOT_STATUS="$(git -C "$ROOT" status --porcelain=v1 --untracked-files=all)"
 ROOT_DIRTY=false
 [[ -z "$ROOT_STATUS" ]] || ROOT_DIRTY=true
 
-# nxc/raftly.nix fetches Raftly from GitHub independently of the submodule.
-# Record both revisions so cross-method comparisons can detect a mismatch.
-NIX_RAFTLY_REV="$(python3 - "$NXC_DIR/raftly.nix" <<'PY'
-import re, sys
-text = open(sys.argv[1], encoding="utf-8").read()
-match = re.search(r'rev\s*=\s*"([0-9a-f]{40})"', text)
-print(match.group(1) if match else "")
-PY
-)"
-
 mkdir -p "$OUT/nodes"
 
 # Record provenance without copying the source files into every run.
@@ -112,8 +102,6 @@ mkdir -p "$OUT/nodes"
   printf 'experiment_repository_dirty=%s\n' "$ROOT_DIRTY"
   printf 'raftly_submodule_commit=%s\n' "$RAFTLY_COMMIT"
   printf 'raftly_submodule_dirty=false\n'
-  printf 'nix_raftly_source_revision=%s\n' "${NIX_RAFTLY_REV:-unknown}"
-  printf 'nix_source_matches_submodule=%s\n' "$([[ -n "$NIX_RAFTLY_REV" && "$NIX_RAFTLY_REV" == "$RAFTLY_COMMIT" ]] && echo true || echo false)"
 } > "$OUT/source.txt"
 printf '%s\n' "$ROOT_STATUS" > "$OUT/experiment-repository-status.txt"
 git -C "$ROOT/raftly" ls-files --others --ignored --exclude-standard \
@@ -148,11 +136,11 @@ done
 awk 'toupper($1) == "FROM" { for (i=2; i<=NF; i++) if ($i !~ /^--/) { print $i; break } }' \
   "$ROOT/raftly/docker/Dockerfile" | sort -u > "$OUT/docker-base-image-refs.txt"
 
-python3 - "$OUT/metadata.json" "$METHOD" "$RUN_ID" "$ROOT" "$ROOT_COMMIT" "$ROOT_DIRTY" "$RAFTLY_COMMIT" "$NIX_RAFTLY_REV" <<'PY'
+python3 - "$OUT/metadata.json" "$METHOD" "$RUN_ID" "$ROOT" "$ROOT_COMMIT" "$ROOT_DIRTY" "$RAFTLY_COMMIT" <<'PY'
 import json, platform, subprocess, sys
 from datetime import datetime, timezone
 from pathlib import Path
-out, method, run_id, root, root_commit, root_dirty, raftly_commit, nix_rev = sys.argv[1:]
+out, method, run_id, root, root_commit, root_dirty, raftly_commit = sys.argv[1:]
 root_path = Path(root)
 
 def command(*args):
@@ -184,8 +172,6 @@ metadata = {
     "experiment_repository_commit": root_commit,
     "experiment_repository_dirty": root_dirty == "true",
     "raftly_submodule_commit": raftly_commit,
-    "nix_raftly_source_revision": nix_rev or None,
-    "nix_source_matches_submodule": bool(nix_rev and nix_rev == raftly_commit),
     "nxc_locked_inputs": locked_inputs,
     "tools": {
         "docker": command("docker", "--version"),
@@ -202,9 +188,6 @@ PY
 
 if [[ "$ROOT_DIRTY" == true ]]; then
   log "WARNING: experiment repository is dirty; see experiment-repository-status.txt."
-fi
-if [[ -z "$NIX_RAFTLY_REV" || "$NIX_RAFTLY_REV" != "$RAFTLY_COMMIT" ]]; then
-  log "WARNING: the Raftly revision in nxc/raftly.nix does not match the submodule commit."
 fi
 
 # Cleanup is limited to this run's Compose project and node services.
