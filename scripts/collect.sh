@@ -9,10 +9,9 @@ Usage: collect.sh docker|nxc
 
 Environment overrides:
   PROJECT_ROOT         Project root (default: detected from Git)
-  RESULT_ROOT          Result directory (default: PROJECT_ROOT/repro-results)
+  RESULT_ROOT          Result directory (default: PROJECT_ROOT/results/build)
   RUN_ID               Run identifier (default: UTC timestamp + method)
   NXC_COMPOSE_PROJECT  NXC Docker Compose project name (default: docker)
-  NXC_NIX_FLAGS        Flags passed to nxc build (default: --rebuild)
 USAGE
 }
 
@@ -33,10 +32,9 @@ ROOT="$(cd -- "$ROOT" && pwd -P)"
 DOCKER_COMPOSE_FILE="$ROOT/docker/docker-compose.yml"
 NXC_DIR="$ROOT/nxc"
 NXC_BUILD_LINK="$NXC_DIR/build/composition::docker"
-RESULT_ROOT="${RESULT_ROOT:-$ROOT/repro-results}"
+RESULT_ROOT="${RESULT_ROOT:-$ROOT/results/build}"
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%dt%H%M%sz)-$METHOD-$$}"
 NXC_COMPOSE_PROJECT="${NXC_COMPOSE_PROJECT:-docker}"
-NXC_NIX_FLAGS="${NXC_NIX_FLAGS:---rebuild}"
 
 if [[ ! "$RUN_ID" =~ ^[a-z0-9][a-z0-9-]*$ ]] || (( ${#RUN_ID} > 45 )); then
   echo "RUN_ID must be at most 45 characters and contain only lowercase letters, numbers, and hyphens." >&2
@@ -315,7 +313,7 @@ else
 
   log "Building NixOS Compose from $NXC_DIR."
   BUILD_START="$(date +%s)"
-  (cd "$NXC_DIR" && nxc build -f docker --nix-flags="$NXC_NIX_FLAGS") \
+  (cd "$NXC_DIR" && nxc build) \
     2>&1 | tee "$OUT/build.log"
   printf '%s\n' "$(( $(date +%s) - BUILD_START ))" > "$OUT/build-duration-seconds.txt"
 

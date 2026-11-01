@@ -133,8 +133,6 @@ def compare(run_a: Path, run_b: Path) -> dict[str, Any]:
             "same_raftly_commit": meta_a.get("raftly_submodule_commit") == meta_b.get("raftly_submodule_commit"),
             "raftly_commit_a": meta_a.get("raftly_submodule_commit"),
             "raftly_commit_b": meta_b.get("raftly_submodule_commit"),
-            "nix_source_matches_submodule_a": meta_a.get("nix_source_matches_submodule"),
-            "nix_source_matches_submodule_b": meta_b.get("nix_source_matches_submodule"),
         },
         "nodes_within_run_a": node_summary(run_a),
         "nodes_within_run_b": node_summary(run_b),
@@ -205,7 +203,6 @@ def print_report(report: dict[str, Any]) -> None:
     print(f"  Same experiment commit:       {source['same_experiment_commit']}")
     print(f"  Experiment tree dirty:        A={source['experiment_repo_dirty_a']} B={source['experiment_repo_dirty_b']}")
     print(f"  Same Raftly source commit:    {source['same_raftly_commit']}")
-    print(f"  Nix source matches submodule: A={source['nix_source_matches_submodule_a']} B={source['nix_source_matches_submodule_b']}")
 
     if not report["same_method"]:
         print("\nDifferent build methods: image IDs and Nix NAR hashes are not directly comparable.")

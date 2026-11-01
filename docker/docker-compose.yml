@@ -21,7 +21,7 @@ services:
         environment:
             RESULTS_DIR: /results
         volumes:
-            - ./logs/tests:/results
+            - ./logs/cluster-tests:/results
         networks:
             - raftly
         depends_on:

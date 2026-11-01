@@ -1,6 +1,4 @@
-.PHONY: all scenarios cluster-tests build clean-all
-
-all: scenarios cluster-tests
+.PHONY: scenarios cluster-tests
 
 scenarios:
 	@mkdir -p logs/scenarios
@@ -23,9 +21,3 @@ cluster-tests:
 	done; \
 	if [ $$failed -eq 0 ]; then echo "ALL SCENARIOS FINISHED"; else echo "ONE OR MORE SCENARIOS FAILED"; fi; \
 	exit $$failed
-
-build:
-	./scripts/build.sh
-
-clean-all:
-	docker system prune --all --force

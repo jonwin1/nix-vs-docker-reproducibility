@@ -3,4 +3,4 @@ result
 build/
 deploy/
 artifact/
-repro-results/
+results*
