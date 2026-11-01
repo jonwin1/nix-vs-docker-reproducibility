@@ -272,6 +272,7 @@ if [[ "$METHOD" == "docker" ]]; then
   while IFS= read -r ref; do
     [[ -n "$ref" ]] || continue
     printf '%s\t' "$ref" >> "$OUT/docker-base-image-identities.txt"
+    docker image pull "$ref" >/dev/null
     if docker image inspect "$ref" >/dev/null 2>&1; then
       docker image inspect "$ref" \
         --format '{{.Id}} {{json .RepoDigests}} {{.Architecture}}' \
