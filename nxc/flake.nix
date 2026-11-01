@@ -4,6 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/26.05";
     nxc.url = "git+https://gitlab.inria.fr/nixos-compose/nixos-compose.git?ref=25.05";
+    self.submodules = true;
   };
 
   outputs =
@@ -23,7 +24,10 @@
           composition = ./composition.nix;
         }
         // {
-          raftly = pkgs.callPackage ./raftly.nix { };
+          raftly = pkgs.callPackage ./raftly.nix {
+            src = ../raftly;
+            vendorHash = "sha256-9xWI1wtlm2H/pQIbFeJ0dtqhqJXL4f3OSgi70dXrNys=";
+          };
         };
 
       defaultPackage.${system} = self.packages.${system}."composition::docker";

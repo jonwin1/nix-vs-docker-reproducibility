@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+RAFTLY_DIR="${RAFTLY_DIR:-/src/raftly}"
+
 RESULTS_DIR="${RESULTS_DIR:-./results}"
 mkdir -p "$RESULTS_DIR"
 
@@ -27,7 +29,7 @@ SCENARIOS=(
         echo "Scenario: $SCENARIO"
         echo "========================================"
 
-        if bash /src/raftly/scripts/scenario.sh "$SCENARIO"; then
+        if bash "$RAFTLY_DIR/scripts/scenario.sh" "$SCENARIO"; then
             echo "RESULT: PASS ($SCENARIO)"
         else
             EXIT_CODE=$?
