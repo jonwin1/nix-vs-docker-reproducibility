@@ -44,7 +44,7 @@ let
 
       cd "${raftlyScenarioSource}"
 
-      exec bash "${../docker/scripts/scenarios.sh}"
+      exec bash "${../scripts/scenarios.sh}"
     '';
   };
 
@@ -61,7 +61,7 @@ let
     text = ''
       export RESULTS_DIR="''${RESULTS_DIR:-/var/tmp/raftly-results/cluster}"
 
-      exec bash "${../docker/scripts/cluster-tests.sh}" "$@"
+      exec bash "${../scripts/cluster-tests.sh}" "$@"
     '';
   };
 

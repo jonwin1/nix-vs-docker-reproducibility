@@ -12,7 +12,7 @@ WORKDIR /src/raftly
 RUN go mod download
 
 # Add the runner script from this test repository.
-COPY docker/scripts/scenarios.sh /src/scripts/scenarios.sh
+COPY scripts/scenarios.sh /src/scripts/scenarios.sh
 
 RUN chmod +x /src/scripts/scenarios.sh
 

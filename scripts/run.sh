@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
 
 echo "Cleaning all caches"
-rm -rf ./docker/logs ./nxc/results
-rm -rf ./nxc/artifact/ ./nxc/build/ ./nxc/deploy/
-docker system prune --all --volumes --force
-docker volume prune --all --force
-sudo nix-collect-garbage -d
+./scripts/clean.sh
 
 echo "Building environments"
 mkdir -p results/build

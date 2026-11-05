@@ -4,7 +4,7 @@ RUN apk add --no-cache bash curl jq coreutils
 
 WORKDIR /src
 
-COPY docker/scripts/cluster-tests.sh /src/scripts/cluster-tests.sh
+COPY scripts/cluster-tests.sh /src/scripts/cluster-tests.sh
 
 RUN chmod +x /src/scripts/cluster-tests.sh
 
