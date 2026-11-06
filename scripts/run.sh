@@ -25,4 +25,6 @@ mv nxc/results/* results/nxc/
 
 mv results results-"$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
+rm -rf docker/logs nxc/artifact nxc/build nxc/deploy nxc/results
+
 echo "All experiments completed"
