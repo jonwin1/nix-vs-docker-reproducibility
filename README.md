@@ -43,10 +43,15 @@ support and Nix installed ([Download Nix](https://nixos.org/download/#download-n
 4. The results can be found in a directory called results followed by the date
    and time of the run.
 
+The VM has no persistent storage, which means that the next time it is started
+there is no cache or old builds remaining that could affect future results.
+
 ## TODO
 
 - Licence
 - Make public
+- Try different versions
+- 5 runs per week
 
 ## AI Disclaimer
 

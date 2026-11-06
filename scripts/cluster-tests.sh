@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Small, repeatable observations of Raftly state under network faults.
-# Request failures and stale reads are recorded, not treated as test failures.
 set -uo pipefail
 
-# Fixed settings: change values here, not in Make or Compose.
 CONTROL_URL="http://node1:8001"
 CLIENT_NODE="node1"
 NODES=(node1 node2 node3)
@@ -250,4 +247,3 @@ case "$SCENARIO" in
 esac
 
 log "Finished at: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-log "Request failures and stale reads are observations, not automatic test failures."

@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Build one Raftly environment and collect reproducibility data.
-# Usage: scripts/collect.sh docker|nxc
 set -Eeuo pipefail
 
 usage() {
@@ -76,8 +74,6 @@ if [[ "$METHOD" == "nxc" ]]; then
   need nxc
 fi
 
-# Docker builds from the Raftly submodule directory. Reject local changes so
-# that the recorded submodule commit identifies the Docker build context.
 RAFTLY_STATUS="$(git -C "$ROOT/raftly" status --porcelain=v1 --untracked-files=all)"
 if [[ -n "$RAFTLY_STATUS" ]]; then
   echo "The raftly submodule has local or untracked changes:" >&2
@@ -94,7 +90,6 @@ ROOT_DIRTY=false
 
 mkdir -p "$OUT/nodes"
 
-# Record provenance without copying the source files into every run.
 {
   printf 'experiment_repository_commit=%s\n' "$ROOT_COMMIT"
   printf 'experiment_repository_dirty=%s\n' "$ROOT_DIRTY"
@@ -105,8 +100,6 @@ printf '%s\n' "$ROOT_STATUS" > "$OUT/experiment-repository-status.txt"
 git -C "$ROOT/raftly" ls-files --others --ignored --exclude-standard \
   > "$OUT/raftly-ignored-files.txt"
 
-# Hash the build definitions and dependency locks. These hashes are sufficient
-# to detect changed inputs when the repository and submodule commits are fixed.
 INPUT_FILES=(
   docker/docker-compose.yml
   .gitmodules
@@ -188,7 +181,6 @@ if [[ "$ROOT_DIRTY" == true ]]; then
   log "WARNING: experiment repository is dirty; see experiment-repository-status.txt."
 fi
 
-# Cleanup is limited to this run's Compose project and node services.
 cleanup() {
   local status=$?
   trap - EXIT
@@ -243,8 +235,6 @@ collect_node() {
   docker image inspect "$image_id" > "$node_dir/image-inspect.json"
   docker inspect "$cid" > "$node_dir/container-inspect.json"
 
-  # Copy from the actual node container. This works for running and stopped
-  # containers, so no temporary container or dummy command is needed.
   docker cp "$cid:$binary_path" "$node_dir/raftly-server"
   sha256sum "$node_dir/raftly-server" > "$node_dir/raftly-server.sha256"
   if command -v go >/dev/null 2>&1; then
@@ -252,8 +242,6 @@ collect_node() {
       > "$node_dir/raftly-server.go-version.txt" 2>&1 || true
   fi
 
-  # Docker's runtime image is Alpine. NXC's software inventory is the Nix
-  # closure collected at composition level below.
   if [[ "$METHOD" == "docker" ]]; then
     docker run --rm --network none --entrypoint /sbin/apk "$image_id" info -v --no-network \
       | sort > "$node_dir/apk-packages.txt"
@@ -299,8 +287,6 @@ if [[ "$METHOD" == "docker" ]]; then
   done
 
 else
-  # NXC 25.05 uses project name 'docker' in the observed deployment. Refuse
-  # to touch an existing deployment with the same project and service labels.
   for node in "${RAFTLY_SERVICES[@]}"; do
     mapfile -t existing < <(docker ps -aq \
       --filter "label=com.docker.compose.project=$NXC_COMPOSE_PROJECT" \
@@ -326,8 +312,6 @@ else
   printf '%s\n' "$BUILD_REF" > "$OUT/nix-build-ref.txt"
   nix path-info --recursive --json "$BUILD_REF" > "$OUT/nix-closure.json"
 
-  # Turn Nix's closure output into a package/store inventory and find the
-  # Raftly executable path used by the node system configurations.
   python3 - "$OUT/nix-closure.json" "$OUT/nix-store-inventory.json" "$OUT/nix-raftly-binary-path.txt" <<'PY'
 import json, os, sys
 source, inventory_path, binary_path_file = sys.argv[1:]
