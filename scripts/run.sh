@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-echo "Cleaning all caches"
-./scripts/clean.sh
-
 echo "Building environments"
 mkdir -p results/build
 ./scripts/collect.sh docker
