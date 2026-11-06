@@ -6,15 +6,17 @@ support and Nix installed ([Download Nix](https://nixos.org/download/#download-n
 1. Build the experiment VM.
 
     ```sh
-    nix build --impure .#nixosConfigurations.vm.config.system.build.vm
+    nix build --impure --out-link /tmp/sc-experiment-vm .#nixosConfigurations.vm.config.system.build.vm
     ```
 
-    > `--impure` is required to share the current directory with the VM.
+    > `--impure` is required to share the project directory with the VM.
+    > `--out-link` sets the build output location (so that it is not in the
+    > shared directory).
 
 2. Start the VM and wait for it to open in a new window.
 
     ```sh
-    ./result/bin/run-nixos-vm
+    /tmp/sc-experiment-vm/bin/run-nixos-vm
     ```
 
 3. Inside the VM.
