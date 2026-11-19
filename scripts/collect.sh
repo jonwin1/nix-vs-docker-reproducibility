@@ -235,7 +235,7 @@ collect_node() {
   docker image inspect "$image_id" > "$node_dir/image-inspect.json"
   docker inspect "$cid" > "$node_dir/container-inspect.json"
 
-  docker cp "$cid:$binary_path" "$node_dir/raftly-server"
+  docker exec "$cid" cat "$binary_path" > "$node_dir/raftly-server"
   sha256sum "$node_dir/raftly-server" > "$node_dir/raftly-server.sha256"
   if command -v go >/dev/null 2>&1; then
     go version -m "$node_dir/raftly-server" \
